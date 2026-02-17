@@ -28,7 +28,7 @@ func main() {
 	}
 	log.Info("Postgres successfully connected")
 
-	svc := service.NewService(db, logger)
+	svc := bookmarks.NewData(db, logger)
 
 	router := echo.New()
 

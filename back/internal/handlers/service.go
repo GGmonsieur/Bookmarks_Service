@@ -1,4 +1,4 @@
-package service
+package bookmarks
 
 import (
 	"bookmark_sevice/internal/DataFunctions"
@@ -16,10 +16,10 @@ type Service struct {
 	db     *postgres.DB
 	logger echo.Logger
 
-	resumeRepo *resume.Repo
+	Datas *DataFunctions.Repo
 }
 
-func NewService(db *postgres.DB, logger echo.Logger) *Service {
+func NewData(db *postgres.DB, logger echo.Logger) *Service {
 	svc := &Service{
 		db:     db,
 		logger: logger,
@@ -30,7 +30,7 @@ func NewService(db *postgres.DB, logger echo.Logger) *Service {
 }
 
 func (s *Service) initRepositories(db *postgres.DB) {
-	s.resumeRepo = resume.NewRepo(db)
+	s.Datas = DataFunctions.NewRepo(db)
 }
 
 // Пока можно не вдаваться в то что ниже
