@@ -1,0 +1,10 @@
+server:
+    isProd: false
+    port: 8080
+    pg:
+        user: "name_user"
+        password: "password"
+        host: "XXX.XXX.XXX.XX"
+        port: 5432
+        database: "nameOfdb"
+        sslmode: "disable"
