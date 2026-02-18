@@ -1,4 +1,4 @@
-package bookmarks
+package service
 
 import (
 	"bookmark_sevice/internal/DataFunctions"
@@ -16,7 +16,7 @@ type Service struct {
 	db     *postgres.DB
 	logger echo.Logger
 
-	Datas *DataFunctions.Repo
+	BookmarksRepo *DataFunctions.Repo
 }
 
 func NewData(db *postgres.DB, logger echo.Logger) *Service {
@@ -30,7 +30,7 @@ func NewData(db *postgres.DB, logger echo.Logger) *Service {
 }
 
 func (s *Service) initRepositories(db *postgres.DB) {
-	s.Datas = DataFunctions.NewRepo(db)
+	s.BookmarksRepo = DataFunctions.NewRepo(db)
 }
 
 // Пока можно не вдаваться в то что ниже

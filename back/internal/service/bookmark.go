@@ -1,4 +1,4 @@
-package bookmarks
+package service
 
 import (
 	"net/http"
@@ -19,7 +19,7 @@ func (s *Service) CreatBookmark(c echo.Context) error {
 		return c.JSON(s.NewError(InvalidParams))
 	}
 
-	repo := s.Datas
+	repo := s.BookmarksRepo
 	err = repo.POSTbookmark(c.Request().Context(), &bookmark)
 	if err != nil {
 		s.logger.Error(err)
@@ -39,7 +39,7 @@ func (s *Service) GetBookmarkFromID(c echo.Context) error {
 		return c.JSON(s.NewError(InvalidParams))
 	}
 
-	repo := s.Datas
+	repo := s.BookmarksRepo
 
 	report, err := repo.GETbkmID(c.Request().Context(), id)
 	if err != nil {
@@ -58,7 +58,7 @@ func (s *Service) GETbookmarksPL(c echo.Context) error {
     limit, _ := strconv.Atoi(c.QueryParam("limit"))
 
 
-    bookmarks, err := s.Datas.FetchBookmarks(c.Request().Context(), page, limit)
+    bookmarks, err := s.BookmarksRepo.FetchBookmarks(c.Request().Context(), page, limit)
     if err != nil {
         s.logger.Error(err)
         return c.JSON(http.StatusInternalServerError, map[string]string{"error": "database error"})
@@ -84,7 +84,7 @@ func (s *Service) PATCHbookmarkid(c echo.Context) error {
     }
 
 
-    err = s.Datas.PatchBookmark(c.Request().Context(), id, &req.Title, &req.Description)
+    err = s.BookmarksRepo.PatchBookmark(c.Request().Context(), id, &req.Title, &req.Description)
     if err != nil {
         s.logger.Error(err)
         return c.JSON(http.StatusInternalServerError, map[string]string{"error": "db error"})
@@ -103,7 +103,7 @@ func (s *Service) DELETEid(c echo.Context) error {
     }
 
     
-    err = s.Datas.DeleteBookmark(c.Request().Context(), id)
+    err = s.BookmarksRepo.DeleteBookmark(c.Request().Context(), id)
     if err != nil {
         if strings.Contains(err.Error(), "not found") {
             return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})

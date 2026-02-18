@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"bookmark_sevice/internal/config"
-	"bookmark_sevice/internal/handlers"
+	"bookmark_sevice/internal/service"
 	"bookmark_sevice/pkg/logs"
 	"bookmark_sevice/pkg/postgres"
 
@@ -28,7 +28,7 @@ func main() {
 	}
 	log.Info("Postgres successfully connected")
 
-	svc := bookmarks.NewData(db, logger)
+	svc := service.NewData(db, logger)
 
 	router := echo.New()
 
