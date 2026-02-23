@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"bookmark_sevice/pkg/postgres"
+	"bookmark_service/pkg/postgres"
 	"strconv"
 
 	"github.com/spf13/viper"
@@ -18,6 +18,7 @@ func NewConfig() (*Config, error) {
 	}
 
 	return &Config{
+		JWTsecret: viper.GetString("server.jwtsecret"),
 		IsProd: viper.GetBool("server.isProd"),
 		Web: &webParams{
 			Port: viper.GetUint16("server.port"),
@@ -34,6 +35,7 @@ func NewConfig() (*Config, error) {
 }
 
 type Config struct {
+	JWTsecret string
 	IsProd   bool
 	Web      *webParams
 	Postgres *postgres.ConnectionData

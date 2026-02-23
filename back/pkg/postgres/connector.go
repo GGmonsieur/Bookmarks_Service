@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
+	
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -20,7 +20,7 @@ type ConnectionData struct {
 }
 
 type DB struct {
-	pool *pgxpool.Pool
+	Pool *pgxpool.Pool
 }
 
 func Connect(ctx context.Context, cfg *ConnectionData) (*DB, error) {
@@ -40,31 +40,31 @@ func Connect(ctx context.Context, cfg *ConnectionData) (*DB, error) {
 		return nil, fmt.Errorf("failed to ping postgres: %w", err)
 	}
 
-	return &DB{pool: pool}, nil
+	return &DB{Pool: pool}, nil
 }
 
 func (db *DB) Close() {
-	if db == nil || db.pool == nil {
+	if db == nil || db.Pool == nil {
 		return
 	}
-	db.pool.Close()
+	db.Pool.Close()
 }
 
 func (db *DB) GetPool() *pgxpool.Pool {
 	if db == nil {
 		return nil
 	}
-	return db.pool
+	return db.Pool
 }
 
 func (db *DB) Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error) {
-	return db.pool.Exec(ctx, query, args...)
+	return db.Pool.Exec(ctx, query, args...)
 }
 
 func (db *DB) Query(ctx context.Context, query string, args ...any) (pgx.Rows, error) {
-	return db.pool.Query(ctx, query, args...)
+	return db.Pool.Query(ctx, query, args...)
 }
 
 func (db *DB) QueryRow(ctx context.Context, query string, args ...any) pgx.Row {
-	return db.pool.QueryRow(ctx, query, args...)
+	return db.Pool.QueryRow(ctx, query, args...)
 }

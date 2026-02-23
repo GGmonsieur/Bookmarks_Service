@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
-	"bookmark_sevice/internal/config"
-	"bookmark_sevice/internal/service"
-	"bookmark_sevice/pkg/logs"
-	"bookmark_sevice/pkg/postgres"
+	"bookmark_service/internal/config"
+	"bookmark_service/internal/service"
+	"bookmark_service/pkg/logs"
+	"bookmark_service/pkg/postgres"
+	"bookmark_service/internal/middlewear"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
@@ -32,12 +33,27 @@ func main() {
 
 	router := echo.New()
 
-	api := router.Group("/api/v1")
+	v1 := router.Group("/api/v1")
 
-	api.POST("/bookmarks", svc.CreatBookmark)
-	api.GET("/bookmarks/:id", svc.GetBookmarkFromID)
-	api.GET("/bookmarks", svc.GETbookmarksPL)
-	api.PATCH("/bookmarks/:id", svc.PATCHbookmarkid)
-	api.DELETE("/bookmarks/:id", svc.DELETEid)
+
+	v1.POST("/auth/register", svc.RegisterUser)
+	v1.POST("/auth/login", svc.LoginUser)
+
+
+	protected := v1.Group("") 
+	protected.Use(middlewear.JWTMiddleware(cfg.JWTsecret))
+	
+	protected.POST("/bookmarks", svc.CreatBookmark)
+	protected.GET("/bookmarks/:id", svc.GetBookmarkFromID)
+	protected.GET("/bookmarks", svc.GetBookmarksSort)
+	protected.PATCH("/bookmarks/:id", svc.PATCHbookmarkid)
+	protected.DELETE("/bookmarks/:id", svc.DELETEid)
+
+	protected.POST("/tags", svc.CreatTag)
+	protected.GET("/tags", svc.GetTags)
+	protected.DELETE("/tags/:id", svc.DeleteTag)
+
+	protected.POST("/bookmarks/:id/tags", svc.PostBKM_TAGS)
+	protected.DELETE("/bookmarks/:id/tags/:tagId", svc.DeleteBKM_TAG)
 	router.Logger.Fatal(router.Start("localhost:" + cfg.GetWebPort()))
 }

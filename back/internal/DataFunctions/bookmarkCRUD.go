@@ -3,8 +3,9 @@ package DataFunctions
 import (
 	"context"
 	"fmt"
-	"bookmark_sevice/internal/models"
-	"bookmark_sevice/pkg/postgres"
+    "strings"
+	"bookmark_service/internal/models"
+	"bookmark_service/pkg/postgres"
 )
 
 type Repo struct {
@@ -18,9 +19,9 @@ func NewRepo(db *postgres.DB) *Repo {
 
 
 // получение  bookmark через id
-func (r *Repo) GETbkmID(ctx context.Context, id int) (*models.Bookmark, error) {
+func (r *Repo) GETbkmID(ctx context.Context, id , userID int) (*models.Bookmark, error) {
 	var bookmark models.Bookmark
-	err := r.db.QueryRow(ctx, `SELECT id, user_id, url, title, description FROM bookmarks WHERE id = $1`, id).
+	err := r.db.QueryRow(ctx, `SELECT id, user_id, url, title, description FROM bookmarks WHERE id = $1 AND user_id = $2 `, id, userID).
 		Scan(&bookmark.ID,&bookmark.UserID, &bookmark.Url, &bookmark.Title, &bookmark.Description)
 	if err != nil {
 		return nil, err
@@ -44,34 +45,67 @@ func (r *Repo) POSTbookmark(ctx context.Context, bookmark *models.Bookmark) erro
 
 
 //получение страниц и кол-во id
-func (s *Repo) FetchBookmarks(ctx context.Context, page, limit int) ([]models.Bookmark, error) {
-    if page < 1 { page = 1 }
-    if limit < 1 { limit = 10 }
-    offset := (page - 1) * limit
+func (r *Repo) FetchBookmarks(ctx context.Context, userID int, f models.BookmarkFilter) ([]models.Bookmark, error) {
+    // Значения по умолчанию
+    if f.Page < 1 { f.Page = 1 }
+    if f.Limit < 1 { f.Limit = 10 }
+    offset := (f.Page - 1) * f.Limit
 
-    query := `SELECT id, url, title, description FROM bookmarks LIMIT $1 OFFSET $2`
-    rows, err := s.db.Query(ctx, query, limit, offset)
-    if err != nil {
+    sql := `SELECT id, user_id, url, title, description FROM bookmarks WHERE user_id = $1 AND 1=1`
+    args := []interface{}{userID}
+    argCount := 2
+
+    // Фильтр по поиску (Title или URL)
+    if f.Search != "" {
+        sql += fmt.Sprintf(" AND (title ILIKE $%d OR url ILIKE $%d)", argCount, argCount)
+        args = append(args, "%"+f.Search+"%")
+        argCount++
+    }
+
+    // Фильтр по тегу (если есть таблица связей)
+    if f.TagID > 0 {
+        sql += fmt.Sprintf(" AND id IN (SELECT bookmark_id FROM bookmark_tags WHERE tag_id = $%d)", argCount)
+        args = append(args, f.TagID)
+        argCount++
+    }
+
+    // Сортировка (ВНИМАНИЕ: нельзя вставлять через аргументы $1, только напрямую, 
+    // но нужно валидировать список разрешенных полей!)
+    allowedSort := map[string]bool{"created_at": true, "title": true}
+    if !allowedSort[f.Sort] { f.Sort = "created_at" }
+    
+    if strings.ToLower(f.Order) != "asc" { f.Order = "desc" }
+
+    sql += fmt.Sprintf(" ORDER BY %s %s LIMIT $%d OFFSET $%d", f.Sort, f.Order, argCount, argCount+1)
+    args = append(args, f.Limit, offset)
+
+    // Выполнение запроса
+    rows, err := r.db.Query(ctx, sql, args...)
+      if err != nil {
         return nil, err
     }
-    defer rows.Close()
 
+    defer rows.Close()
     var bookmarks []models.Bookmark
+
     for rows.Next() {
+
         var b models.Bookmark
-        if err := rows.Scan(&b.ID, &b.Url, &b.Title, &b.Description); err != nil {
+
+        if err := rows.Scan(&b.ID, &b.UserID, &b.Url, &b.Title, &b.Description); err != nil {
             return nil, err
         }
-        bookmarks = append(bookmarks, b)
-    }
 
+        bookmarks = append(bookmarks, b)
+
+    }
     return bookmarks, rows.Err()
 }
 
 
 
 // обновление title и description
-func (s *Repo) PatchBookmark(ctx context.Context, id int, title *string, desc *string) error {
+func (s *Repo) PatchBookmark(ctx context.Context, id  int ,userID int,title *string, desc *string) error {
     // Собираем запрос динамически
     query := "UPDATE bookmarks SET "
     args := []any{}
@@ -94,8 +128,9 @@ func (s *Repo) PatchBookmark(ctx context.Context, id int, title *string, desc *s
     }
     query += "updated_at = CURRENT_TIMESTAMP"
     
-    query += fmt.Sprintf(" WHERE id = $%d", argID)
+    query += fmt.Sprintf(" WHERE id = $%d and user_id = $%d", argID, argID+1)
     args = append(args, id)
+    args = append(args, userID)
 
     _, err := s.db.Exec(ctx, query, args...)
     return err
@@ -104,11 +139,11 @@ func (s *Repo) PatchBookmark(ctx context.Context, id int, title *string, desc *s
 
 
 // удаление по id
-func (s *Repo) DeleteBookmark(ctx context.Context, id int) error {
-    query := `DELETE FROM bookmarks WHERE id = $1`
+func (s *Repo) DeleteBookmark(ctx context.Context, id, userID int) error {
+    query := `DELETE FROM bookmarks WHERE id = $1 and user_id = $2`
 
 
-    res, err := s.db.Exec(ctx, query, id)
+    res, err := s.db.Exec(ctx, query, id, userID)
     if err != nil {
         return err
     }

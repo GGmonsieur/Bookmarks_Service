@@ -1,4 +1,5 @@
 server:
+    jwtsecret: "your_secret_cod"
     isProd: false
     port: 8080
     pg:
