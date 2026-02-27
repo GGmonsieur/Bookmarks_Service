@@ -3,16 +3,14 @@ package DataFunctions
 import (
 	"context"
 	"errors"
-	"time"
-    "fmt"
-    "github.com/jackc/pgx/v5"
-	"github.com/golang-jwt/jwt/v5"
+	"fmt"
+
+    "bookmark_service/internal/models"
+	"bookmark_service/pkg/secretFuncs"
+
+	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
-	"bookmark_service/internal/models"
-	"bookmark_service/internal/config"
 )
-
-
 
 // регистрация user
 func (r *Repo) RegisterUserIndb(ctx context.Context, user *models.User) error {
@@ -55,29 +53,9 @@ func (r *Repo) Login(ctx context.Context, user *models.User)(string, error) {
     }
 
     // 2. Сравниваем хэш из базы с паролем из запроса
-    err = bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(user.Password))
+    tokenString,err := secretFuncs.ChekPassword(user)
     if err != nil {
         return "", errors.New("invalid email or password")
-    }
-
-    // 3. Пароль верный! Создаем JWT токен
-    claims := &models.MyCustomClaims{
-        UserID: user.ID,
-        RegisteredClaims: jwt.RegisteredClaims{
-            ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // Токен на сутки
-            IssuedAt:  jwt.NewNumericDate(time.Now()),
-        },
-    }
-	
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    
-	cfg, _ := config.NewConfig()
-    jwtSecret := cfg.JWTsecret
-
-    // Подписываем токен нашим секретным ключом
-    tokenString, err := token.SignedString([]byte(jwtSecret))
-    if err != nil {
-        return "", err
     }
 
     return tokenString, nil

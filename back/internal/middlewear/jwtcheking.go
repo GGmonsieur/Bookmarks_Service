@@ -1,9 +1,10 @@
 package middlewear
 
 import (
+	"bookmark_service/pkg/secretFuncs"
 	"net/http"
 	"strings"
-	"bookmark_service/internal/models"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
@@ -26,7 +27,7 @@ func JWTMiddleware(jwtSecret string) echo.MiddlewareFunc {
 			tokenString := parts[1]
 
 			// 3. Парсим и валидируем токен
-			claims := &models.MyCustomClaims{} // Твоя структура из Login
+			claims := &secretFuncs.MyCustomClaims{} // Твоя структура из Login
 			token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 				// Важно: проверяем метод подписи
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

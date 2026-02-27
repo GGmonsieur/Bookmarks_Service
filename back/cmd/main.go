@@ -1,12 +1,12 @@
 package main
 
 import (
-	"context"
 	"bookmark_service/internal/config"
+	"bookmark_service/internal/middlewear"
 	"bookmark_service/internal/service"
 	"bookmark_service/pkg/logs"
 	"bookmark_service/pkg/postgres"
-	"bookmark_service/internal/middlewear"
+	"context"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
@@ -35,14 +35,12 @@ func main() {
 
 	v1 := router.Group("/api/v1")
 
-
 	v1.POST("/auth/register", svc.RegisterUser)
 	v1.POST("/auth/login", svc.LoginUser)
 
-
-	protected := v1.Group("") 
+	protected := v1.Group("")
 	protected.Use(middlewear.JWTMiddleware(cfg.JWTsecret))
-	
+
 	protected.POST("/bookmarks", svc.CreatBookmark)
 	protected.GET("/bookmarks/:id", svc.GetBookmarkFromID)
 	protected.GET("/bookmarks", svc.GetBookmarksSort)
