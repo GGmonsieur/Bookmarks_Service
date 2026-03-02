@@ -2,6 +2,7 @@ package models
 
 import (
 	"time"
+	"errors"
 )
 
 type User struct {
@@ -43,4 +44,7 @@ type BookmarkFilter struct {
 	Limit  int
 	Sort   string // "created_at" или "title"
 	Order  string // "asc" или "desc"
+	IncludDelete bool
 }
+
+var ErrDuplicateURL = errors.New("bookmark with this URL already exists")

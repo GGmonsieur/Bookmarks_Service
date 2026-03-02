@@ -4,8 +4,11 @@ import (
 	"bookmark_service/internal/models"
 	"bookmark_service/pkg/postgres"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type Repo struct {
@@ -27,14 +30,26 @@ func (r *Repo) GETbkmID(ctx context.Context, id, userID int) (*models.Bookmark, 
 	return &bookmark, nil
 }
 
-// создание bookmark
+// создание bookmar
 func (r *Repo) POSTbookmark(ctx context.Context, bookmark *models.Bookmark) error {
-	err := r.db.QueryRow(ctx, `INSERT INTO bookmarks (user_id, url, title, description) VALUES ($1, $2, $3, $4) RETURNING id, created_at`,
-		bookmark.UserID, bookmark.Url, bookmark.Title, bookmark.Description).
-		Scan(&bookmark.ID, &bookmark.CreatedAt)
+	query := `INSERT INTO bookmarks (user_id, url, title, description) 
+              VALUES ($1, $2, $3, $4) 
+              RETURNING id, created_at`
+	
+	err := r.db.QueryRow(ctx, query, 
+		bookmark.UserID, bookmark.Url, bookmark.Title, bookmark.Description,
+	).Scan(&bookmark.ID, &bookmark.CreatedAt)
+
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23505" { 
+				return models.ErrDuplicateURL
+			}
+		}
 		return err
 	}
+
 	return nil
 }
 
@@ -49,10 +64,13 @@ func (r *Repo) FetchBookmarks(ctx context.Context, userID int, f models.Bookmark
 	}
 	offset := (f.Page - 1) * f.Limit
 
-	sql := `SELECT id, user_id, url, title, description FROM bookmarks WHERE user_id = $1 AND 1=1`
+	sql := `SELECT id, user_id, url, title, description FROM bookmarks WHERE user_id = $1 `
 	args := []interface{}{userID}
 	argCount := 2
 
+	if !f.IncludDelete {
+        sql += " AND deleted_at IS NULL"
+    }
 	// Фильтр по поиску (Title или URL)
 	if f.Search != "" {
 		sql += fmt.Sprintf(" AND (title ILIKE $%d OR url ILIKE $%d)", argCount, argCount)
@@ -136,10 +154,35 @@ func (s *Repo) PatchBookmark(ctx context.Context, id int, userID int, title *str
 	return err
 }
 
-// удаление по id
+// soft удаление по id
 func (s *Repo) DeleteBookmark(ctx context.Context, id, userID int) error {
-	query := `DELETE FROM bookmarks WHERE id = $1 and user_id = $2`
+	query := `
+        UPDATE bookmarks 
+        SET deleted_at = NOW() 
+        WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+    `
+	res, err := s.db.Exec(ctx, query, id, userID)
+	if err != nil {
+		return err
+	}
 
+	// Дополнительная проверка: была ли вообще такая запись?
+	rowsAffected := res.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("bookmark with id %d not found", id)
+	}
+
+	return nil
+}
+
+
+//восстановление
+func (s *Repo) Restore(ctx context.Context, id, userID int) error {
+	query := `
+        UPDATE bookmarks 
+        SET deleted_at = NULL 
+        WHERE id = $1 AND user_id = $2 AND deleted_at IS NOT NULL
+    `
 	res, err := s.db.Exec(ctx, query, id, userID)
 	if err != nil {
 		return err
