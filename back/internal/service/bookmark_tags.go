@@ -76,3 +76,17 @@ func (s *Service) DeleteBKM_TAG(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]string{"status": "succes"})
 }
+
+//protected.GET("/bookmarks/stats/by-tags", svc.BKMbyTegs)
+func (s *Service) BKMbyTegs(c echo.Context) error {
+    userID := c.Get("user_id").(int)
+    
+    count, err := s.TagsRepo.GetTaggedBookmarksCount(c.Request().Context(), userID)
+    if err != nil {
+        return c.JSON(http.StatusInternalServerError, map[string]string{"error": "stats failed"})
+    }
+
+    return c.JSON(http.StatusOK, map[string]int{
+        "tagged_bookmarks_total": count,
+    })
+}

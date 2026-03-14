@@ -35,9 +35,9 @@ func (r *Repo) AddTagsToBookmark(ctx context.Context, bookmarkID int, userID int
 	}
 
 	// 3. Если обе проверки прошли — делаем вставку
-	query := `INSERT INTO bookmark_tags (bookmark_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`
+	query := `INSERT INTO bookmark_tags (bookmark_id, tag_id, user_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`
 	for _, tagID := range tagIDs {
-		if _, err := tx.Exec(ctx, query, bookmarkID, tagID); err != nil {
+		if _, err := tx.Exec(ctx, query, bookmarkID, tagID, userID); err != nil {
 			return err
 		}
 	}
@@ -64,4 +64,19 @@ func (r *Repo) RemoveTagFromBookmark(ctx context.Context, bookmarkID, tagID, use
 	}
 
 	return nil
+}
+// вывод кол-во bookmark с tags
+func (r *Repo) GetTaggedBookmarksCount(ctx context.Context, userID int) (int, error) {
+    query := `
+        SELECT COUNT(DISTINCT bookmark_id) 
+        FROM bookmark_tags 
+        WHERE user_id = $1`
+
+    var count int
+    err := r.db.QueryRow(ctx, query, userID).Scan(&count)
+    if err != nil {
+        return 0, fmt.Errorf("ошибка при получении количества помеченных закладок: %w", err)
+    }
+
+    return count, nil
 }

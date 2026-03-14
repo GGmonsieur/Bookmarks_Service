@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bookmark_service/internal/logicFuncs"
 	"bookmark_service/internal/models"
 	"net/http"
 	"strconv"
@@ -9,7 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// api.POST("/bookmarks", svc.CreatBookmark)
+// POST("/bookmarks", svc.CreatBookmark)
 func (s *Service) CreatBookmark(c echo.Context) error {
 	var bookmark models.Bookmark
 	err := c.Bind(&bookmark)
@@ -25,17 +26,29 @@ func (s *Service) CreatBookmark(c echo.Context) error {
 	}
 
 	bookmark.UserID = userID
+	// проверка title
+	if bookmark.Title==""{
+		bookmark.Title, err = logicfuncs.FetchTitle(bookmark.Url)
+		if err!= nil{
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "somthing go wrong" })
+		}
+	}
+
 	repo := s.BookmarksRepo
 	err = repo.POSTbookmark(c.Request().Context(), &bookmark)
 	if err != nil {
 		s.logger.Error(err)
+		if err == models.ErrDuplicateURL{
+			return c.JSON(http.StatusConflict, map[string]string{"error": err.Error()})
+		}else{
 		return c.JSON(s.NewError(InternalServerError))
+		}
 	}
 
 	return c.String(http.StatusOK, "Ok")
 }
 
-// api.GET("/bookmarks:id", svc.GetBookmarkFromID)
+// GET("/bookmarks:id", svc.GetBookmarkFromID)
 func (s *Service) GetBookmarkFromID(c echo.Context) error {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -59,9 +72,15 @@ func (s *Service) GetBookmarkFromID(c echo.Context) error {
 	return c.JSON(http.StatusOK, Response{Object: report})
 }
 
-// api.GET("/bookmarks", svc.GETbookmarksPL)
+// GET("/bookmarks", svc.GETbookmarksPL)
 func (s *Service) GetBookmarksSort(c echo.Context) error {
 	userID := c.Get("user_id").(int)
+
+	includeDeleted, err := strconv.ParseBool(c.QueryParam("includeDeleted"))
+	
+	if err!=nil{
+		 return c.JSON(http.StatusBadRequest, map[string]error{"error": err })
+	}
 
 	filter := models.BookmarkFilter{
 		Search: c.QueryParam("search"),
@@ -70,6 +89,7 @@ func (s *Service) GetBookmarksSort(c echo.Context) error {
 		Limit:  getOptionalInt(c.QueryParam("limit")),
 		Sort:   c.QueryParam("sort"),
 		Order:  c.QueryParam("order"),
+		IncludDelete: includeDeleted,
 	}
 
 	bookmarks, err := s.BookmarksRepo.FetchBookmarks(c.Request().Context(), userID, filter)
@@ -85,7 +105,7 @@ func getOptionalInt(s string) int {
 	return val
 }
 
-// api.PATCH("/bookmarks:id", svc.PATCHid)
+// PATCH("/bookmarks:id", svc.PATCHid)
 func (s *Service) PATCHbookmarkid(c echo.Context) error {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -112,7 +132,7 @@ func (s *Service) PATCHbookmarkid(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{"OK": "поля bookmark и title обновлены"})
 }
 
-// api.DELETE("/bookmarks:id", svc.DELETEid)
+// DELETE("/bookmarks:id", svc.DELETEid)
 func (s *Service) DELETEid(c echo.Context) error {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -136,4 +156,29 @@ func (s *Service) DELETEid(c echo.Context) error {
 
 	// Возвращаем 204 No Content (стандарт для успешного удаления)
 	return c.JSON(http.StatusOK, map[string]string{"status": "succes"})
+}
+
+// protected.POST("/bookmarks/:id/restore", svc.RestoreBKM)
+func (s *Service) RestoreBKM(c echo.Context) error {
+    paramID := c.Param("id")
+    id, err := strconv.Atoi(paramID)
+    if err != nil {
+        return c.JSON(http.StatusBadRequest, map[string]string{
+            "error": "invalid bookmark id",
+        })
+    }
+
+    userID := c.Get("user_id").(int) 
+
+    ctx := c.Request().Context()
+    err = s.BookmarksRepo.Restore(ctx, id, userID)
+    if err != nil {
+        return c.JSON(http.StatusNotFound, map[string]string{
+            "error": err.Error(),
+        })
+    }
+
+    return c.JSON(http.StatusOK, map[string]string{
+        "message": "bookmark restored successfully",
+    })
 }

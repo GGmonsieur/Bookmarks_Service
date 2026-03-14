@@ -46,6 +46,7 @@ func main() {
 	protected.GET("/bookmarks", svc.GetBookmarksSort)
 	protected.PATCH("/bookmarks/:id", svc.PATCHbookmarkid)
 	protected.DELETE("/bookmarks/:id", svc.DELETEid)
+	protected.POST("/bookmarks/:id/restore", svc.RestoreBKM)
 
 	protected.POST("/tags", svc.CreatTag)
 	protected.GET("/tags", svc.GetTags)
@@ -53,5 +54,7 @@ func main() {
 
 	protected.POST("/bookmarks/:id/tags", svc.PostBKM_TAGS)
 	protected.DELETE("/bookmarks/:id/tags/:tagId", svc.DeleteBKM_TAG)
+	protected.GET("/bookmarks/stats/by-tags", svc.BKMbyTegs)
+	
 	router.Logger.Fatal(router.Start("localhost:" + cfg.GetWebPort()))
 }
