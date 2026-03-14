@@ -1,8 +1,8 @@
 package service
 
 import (
-	"bookmark_sevice/internal/DataFunctions"
-	"bookmark_sevice/pkg/postgres"
+	"bookmark_service/internal/DataFunctions"
+	"bookmark_service/pkg/postgres"
 
 	"github.com/labstack/echo/v4"
 )
@@ -10,6 +10,7 @@ import (
 const (
 	InvalidParams       = "invalid params"
 	InternalServerError = "internal error"
+	Unauthorized        = "underfind user"
 )
 
 type Service struct {
@@ -17,6 +18,8 @@ type Service struct {
 	logger echo.Logger
 
 	BookmarksRepo *DataFunctions.Repo
+	UsersRepo     *DataFunctions.Repo
+	TagsRepo      *DataFunctions.Repo
 }
 
 func NewData(db *postgres.DB, logger echo.Logger) *Service {
@@ -31,6 +34,8 @@ func NewData(db *postgres.DB, logger echo.Logger) *Service {
 
 func (s *Service) initRepositories(db *postgres.DB) {
 	s.BookmarksRepo = DataFunctions.NewRepo(db)
+	s.UsersRepo = DataFunctions.NewRepo(db)
+	s.TagsRepo = DataFunctions.NewRepo(db)
 }
 
 // Пока можно не вдаваться в то что ниже

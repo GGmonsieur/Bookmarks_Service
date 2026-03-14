@@ -1,11 +1,15 @@
 package models
 
-import "time"
+import (
+	"time"
+	"errors"
+)
 
 type User struct {
-	ID             int64     `json:"id"`
+	ID             int       `json:"id"`
 	Email          string    `json:"email"`
-	HashedPassword int       `json:"hashed_password"`
+	Password       string    `json:"password"`
+	HashedPassword string    `json:"-"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
@@ -21,9 +25,26 @@ type Bookmark struct {
 	DeletedAt   time.Time `json:"deleted_at"`
 }
 
+type UpdateBookmarkReq struct {
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+}
+
 type Tag struct {
-	ID        int64     `json:"id"`
-	UserID    int64     `json:"users_id"`
+	ID        int       `json:"id"`
+	UserID    int       `json:"users_id"`
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+type BookmarkFilter struct {
+	Search string
+	TagID  int
+	Page   int
+	Limit  int
+	Sort   string // "created_at" или "title"
+	Order  string // "asc" или "desc"
+	IncludDelete bool
+}
+
+var ErrDuplicateURL = errors.New("bookmark with this URL already exists")
